@@ -4,33 +4,31 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Multi-Pin Map</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f0f2f5;height:100vh;display:flex;flex-direction:column}
-    #header{background:#1a73e8;color:white;padding:10px 16px;font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px;flex-shrink:0}
+    html,body{height:100%;width:100%;overflow:hidden}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f0f2f5;display:flex;flex-direction:column}
+    #header{background:#1a73e8;color:white;padding:10px 16px;font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px;flex-shrink:0;min-height:44px}
     .count{background:rgba(255,255,255,.25);border-radius:12px;padding:2px 8px;font-size:13px}
-    #map{flex:1;width:100%}
-    #list{background:white;max-height:180px;overflow-y:auto;border-top:1px solid #e0e0e0;flex-shrink:0}
+    #map{flex:1;width:100%;min-height:200px}
+    #list{background:white;max-height:160px;overflow-y:auto;border-top:1px solid #e0e0e0;flex-shrink:0}
     .item{display:flex;align-items:flex-start;gap:10px;padding:10px 16px;border-bottom:1px solid #f0f0f0;cursor:pointer}
     .item:last-child{border-bottom:none}
-    .item:hover{background:#f5f8ff}
-    .item.active{background:#e8f0fe}
+    .item:active{background:#e8f0fe}
     .badge{width:24px;height:24px;border-radius:50%;color:white;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
-    .label{font-size:13px;font-weight:600;color:#202124;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .addr{font-size:11px;color:#5f6368;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .lbl{font-size:13px;font-weight:600;color:#202124;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .adr{font-size:11px;color:#5f6368;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .note{font-size:11px;color:#9e9e9e;margin-top:2px}
     #err{display:none;background:#fff3e0;color:#e65100;padding:12px 16px;font-size:13px;text-align:center;flex-shrink:0}
   </style>
 </head>
 <body>
-<div id="header">📍 Multi-Pin Map <span class="count" id="cnt">0 мест</span></div>
+<div id="header">📍 Multi-Pin Map <span class="count" id="cnt">…</span></div>
 <div id="map"></div>
 <div id="list"></div>
 <div id="err"></div>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV/XN/WLs=" crossorigin=""></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const COLORS=['#1a73e8','#e53935','#43a047','#fb8c00','#8e24aa','#00acc1','#f4511e','#6d4c41'];
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
@@ -43,39 +41,32 @@ function makeIcon(i){
   });
 }
 
-window.addEventListener('load',()=>{
-  let data=null;
-  if(location.hash.length>1){try{data=JSON.parse(decodeURIComponent(location.hash.slice(1)))}catch(e){}}
-
-  // Demo mode
-  if(!data||!data.pins){
-    data={pins:[
-      {label:'Красная площадь',address:'Красная площадь, Москва',lat:55.7539,lon:37.6208},
-      {label:'Эрмитаж',address:'Дворцовая пл. 2, Санкт-Петербург',lat:59.9398,lon:30.3146},
-      {label:'Третьяковская галерея',address:'Лаврушинский пер. 10, Москва',lat:55.7415,lon:37.6202}
-    ]};
-  }
-
-  const pins=data.pins;
+function init(pins){
   document.getElementById('cnt').textContent=`${pins.length} ${plural(pins.length)}`;
 
-  const map=L.map('map');
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(map);
+  const mapEl=document.getElementById('map');
+  const map=L.map(mapEl,{zoomControl:true});
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    attribution:'© OpenStreetMap',maxZoom:19,crossOrigin:true
+  }).addTo(map);
 
   const listEl=document.getElementById('list');
   const bounds=[];
-  const markers=[];
 
   pins.forEach((pin,i)=>{
     const div=document.createElement('div');
     div.className='item';
-    div.innerHTML=`<div class="badge" style="background:${COLORS[i%COLORS.length]}">${i+1}</div><div style="flex:1;min-width:0"><div class="label">${esc(pin.label)}</div><div class="addr">${esc(pin.address)}</div>${pin.lat?`<div class="note">${pin.lat.toFixed(4)}, ${pin.lon.toFixed(4)}</div>`:'<div class="note">⚠ Адрес не найден</div>'}</div>`;
+    div.innerHTML=`<div class="badge" style="background:${COLORS[i%COLORS.length]}">${i+1}</div>`+
+      `<div style="flex:1;min-width:0"><div class="lbl">${esc(pin.label)}</div>`+
+      `<div class="adr">${esc(pin.address)}</div>`+
+      (pin.lat!=null?`<div class="note">${pin.lat.toFixed(4)}, ${pin.lon.toFixed(4)}</div>`:`<div class="note">⚠ Не найден</div>`)+
+      `</div>`;
     listEl.appendChild(div);
 
     if(pin.lat!=null&&pin.lon!=null){
       const m=L.marker([pin.lat,pin.lon],{icon:makeIcon(i)}).addTo(map)
-        .bindPopup(`<b>${esc(pin.label)}</b><br>${esc(pin.address)}`);
-      markers.push(m);
+        .bindPopup(`<b>${esc(pin.label)}</b><br><small>${esc(pin.address)}</small>`);
       bounds.push([pin.lat,pin.lon]);
       div.addEventListener('click',()=>{
         document.querySelectorAll('.item').forEach(el=>el.classList.remove('active'));
@@ -87,15 +78,35 @@ window.addEventListener('load',()=>{
   });
 
   if(bounds.length===0){
-    map.setView([20,0],2);
+    map.setView([55.75,37.62],10);
     const err=document.getElementById('err');
     err.style.display='block';
-    err.textContent='Не удалось отобразить адреса.';
+    err.textContent='Не удалось найти адреса на карте.';
   } else if(bounds.length===1){
     map.setView(bounds[0],14);
   } else {
     map.fitBounds(bounds,{padding:[40,40]});
   }
+
+  // Force Leaflet to recalculate size after iframe layout settles
+  setTimeout(()=>map.invalidateSize(),100);
+  setTimeout(()=>map.invalidateSize(),500);
+}
+
+window.addEventListener('load',()=>{
+  let data=null;
+  if(location.hash.length>1){
+    try{data=JSON.parse(decodeURIComponent(location.hash.slice(1)))}catch(e){}
+  }
+  if(!data||!data.pins){
+    // Demo
+    data={pins:[
+      {label:'Красная площадь',address:'Красная площадь, Москва',lat:55.7539,lon:37.6208},
+      {label:'Эрмитаж',address:'Дворцовая пл. 2, Санкт-Петербург',lat:59.9398,lon:30.3146},
+      {label:'Третьяковская галерея',address:'Лаврушинский пер. 10, Москва',lat:55.7415,lon:37.6202}
+    ]};
+  }
+  init(data.pins);
 });
 </script>
 </body>
