@@ -39,10 +39,13 @@ function makeIcon(i,done){
   });
 }
 
+// Ekaterinburg center — pick closest result from Nominatim
+const EKB={lat:56.838,lon:60.597};
+function dist(a,b){const dlat=a.lat-b.lat,dlon=a.lon-b.lon;return dlat*dlat+dlon*dlon}
+
 async function geocode(address){
-  const base='https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=ru';
+  const base='https://nominatim.openstreetmap.org/search?format=json&limit=10&countrycodes=ru';
   const headers={'Accept-Language':'ru,en','User-Agent':'EdgeGallerySkill/1.0'};
-  // 3-step priority: explicitly append city/region to query
   const attempts=[
     address+', Екатеринбург, Россия',
     address+', Свердловская область, Россия',
@@ -51,7 +54,14 @@ async function geocode(address){
   try{
     for(const q of attempts){
       const d=await(await fetch(base+'&q='+encodeURIComponent(q),{headers})).json();
-      if(d&&d[0])return{lat:parseFloat(d[0].lat),lon:parseFloat(d[0].lon)};
+      if(!d||!d.length) continue;
+      // Pick result closest to Ekaterinburg
+      const best=d.reduce((a,b)=>{
+        const pa={lat:parseFloat(a.lat),lon:parseFloat(a.lon)};
+        const pb={lat:parseFloat(b.lat),lon:parseFloat(b.lon)};
+        return dist(pa,EKB)<dist(pb,EKB)?a:b;
+      });
+      return{lat:parseFloat(best.lat),lon:parseFloat(best.lon)};
     }
   }catch(e){}
   return null;
