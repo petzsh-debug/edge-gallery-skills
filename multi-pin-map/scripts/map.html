@@ -40,20 +40,20 @@ function makeIcon(i,done){
 }
 
 async function geocode(address){
-  // Sverdlovsk Oblast viewbox: prefer local results, fall back to all Russia
-  const base='https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=ru&accept-language=ru,en';
-  const sverdViewbox='&viewbox=57.5,62.5,66.0,56.0&bounded=1';
+  const base='https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=ru';
   const headers={'Accept-Language':'ru,en','User-Agent':'EdgeGallerySkill/1.0'};
   const q='&q='+encodeURIComponent(address);
+  // 3-step priority: Ekaterinburg city → Sverdlovsk Oblast → all Russia
+  const attempts=[
+    base+'&viewbox=60.0,57.15,61.3,56.55&bounded=1'+q,  // ~35km around Ekb
+    base+'&viewbox=57.5,62.5,66.0,56.0&bounded=1'+q,    // Sverdlovsk Oblast
+    base+q                                                // all Russia
+  ];
   try{
-    // First try: within Sverdlovsk Oblast
-    let r=await fetch(base+sverdViewbox+q,{headers});
-    let d=await r.json();
-    if(d&&d[0])return{lat:parseFloat(d[0].lat),lon:parseFloat(d[0].lon)};
-    // Fallback: all Russia
-    r=await fetch(base+q,{headers});
-    d=await r.json();
-    if(d&&d[0])return{lat:parseFloat(d[0].lat),lon:parseFloat(d[0].lon)};
+    for(const url of attempts){
+      const d=await(await fetch(url,{headers})).json();
+      if(d&&d[0])return{lat:parseFloat(d[0].lat),lon:parseFloat(d[0].lon)};
+    }
   }catch(e){}
   return null;
 }
