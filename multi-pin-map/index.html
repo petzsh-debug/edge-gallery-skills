@@ -293,39 +293,75 @@
   // Gallery passes skill data via window.skillData
   // During local testing you can set window.skillData manually below
 
-  window.addEventListener('load', () => {
-    let data = null;
+  function tryParse(str) {
+    try { return JSON.parse(str); } catch(e) { return null; }
+  }
 
-    // From Gallery app
-    if (window.skillData) {
-      data = window.skillData;
+  function extractData() {
+    // 1. window.skillData / window.skillInput / window.SKILL_DATA
+    for (const key of ['skillData', 'skillInput', 'SKILL_DATA', 'SKILL_INPUT', 'skill_data']) {
+      if (window[key]) return window[key];
     }
 
-    // Fallback: read from URL hash for testing in browser
-    // e.g. index.html#{"locations":[{"label":"Кремль","address":"Красная площадь, Москва"}]}
-    if (!data && location.hash) {
-      try { data = JSON.parse(decodeURIComponent(location.hash.slice(1))); } catch(e) {}
+    // 2. URL search params: ?data=... or ?input=... or ?skillData=...
+    const params = new URLSearchParams(location.search);
+    for (const key of ['data', 'input', 'skillData', 'skillInput', 'q']) {
+      const val = params.get(key);
+      if (val) {
+        const parsed = tryParse(decodeURIComponent(val));
+        if (parsed) return parsed;
+      }
     }
 
-    // Hardcoded demo if nothing passed (for local preview)
-    if (!data) {
-      data = {
-        locations: [
-          { label: "Красная площадь", address: "Красная площадь, Москва" },
-          { label: "Эрмитаж",         address: "Дворцовая площадь 2, Санкт-Петербург" },
-          { label: "Третьяковская галерея", address: "Лаврушинский переулок 10, Москва" }
-        ]
-      };
+    // 3. Entire query string as JSON (some apps pass raw JSON as ?{...})
+    if (location.search.length > 1) {
+      const raw = decodeURIComponent(location.search.slice(1));
+      const parsed = tryParse(raw);
+      if (parsed) return parsed;
     }
 
-    if (!data.locations || data.locations.length === 0) {
+    // 4. URL hash
+    if (location.hash.length > 1) {
+      const parsed = tryParse(decodeURIComponent(location.hash.slice(1)));
+      if (parsed) return parsed;
+    }
+
+    return null;
+  }
+
+  function startWithData(data) {
+    if (!data || !data.locations || data.locations.length === 0) {
       document.getElementById('error-msg').style.display = 'block';
       document.getElementById('error-msg').textContent = 'Нет адресов для отображения.';
       map.setView([20, 0], 2);
       return;
     }
-
     run(data.locations);
+  }
+
+  window.addEventListener('load', () => {
+    const data = extractData();
+
+    if (data) {
+      startWithData(data);
+      return;
+    }
+
+    // Listen for postMessage (some webview containers send data this way)
+    window.addEventListener('message', (event) => {
+      let payload = event.data;
+      if (typeof payload === 'string') payload = tryParse(payload);
+      if (payload && payload.locations) startWithData(payload);
+    });
+
+    // Hardcoded demo if nothing passed (for local preview)
+    startWithData({
+      locations: [
+        { label: "Красная площадь", address: "Красная площадь, Москва" },
+        { label: "Эрмитаж",         address: "Дворцовая площадь 2, Санкт-Петербург" },
+        { label: "Третьяковская галерея", address: "Лаврушинский переулок 10, Москва" }
+      ]
+    });
   });
 </script>
 </body>

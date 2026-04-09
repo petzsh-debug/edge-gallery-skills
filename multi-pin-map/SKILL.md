@@ -30,4 +30,3 @@ Invoke the skill using this exact JSON format inside a skill block:
 ```
 
 Always include as much address detail as possible (city, country) for accurate geocoding.
-After invoking the skill, briefly confirm to the user how many locations you found.
