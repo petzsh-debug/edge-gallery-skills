@@ -1,24 +1,25 @@
 ---
 name: multi-pin-map
-description: Shows multiple addresses or locations as numbered pins on an interactive map.
+description: Show multiple addresses or locations as numbered pins on an interactive map.
 ---
+
+# Multi-Pin Map
+
+## Examples
+
+- "Show these addresses on a map"
+- "Pin these locations on a map"
+- "Покажи на карте"
+- "Отметь адреса на карте"
 
 ## Instructions
 
-When the user provides multiple addresses, places, or locations to display on a map, call the `run_js` tool with:
-- script name: `index.html`
-- data: A JSON string with field:
-  - `locations`: an array of objects, each with `label` (short name) and `address` (full address including city and country)
+Call the `run_js` tool with the following exact parameters:
 
-Use this skill when the user says things like:
-- "show these addresses on a map"
-- "pin these locations"
-- "покажи на карте"
-- "отметь адреса"
+- data: A JSON string with the following field:
+  - locations: An array of objects, each with:
+    - label: A short human-readable name for the location
+    - address: The full address including city and country (for accurate geocoding)
 
-Example invocation:
-```json
-{"locations": [{"label": "Kremlin", "address": "Red Square, Moscow, Russia"}, {"label": "Hermitage", "address": "Palace Square 2, Saint Petersburg, Russia"}]}
-```
-
-Always include city and country in addresses for accurate geocoding.
+Example data value:
+{"locations":[{"label":"Kremlin","address":"Red Square, Moscow, Russia"},{"label":"Hermitage","address":"Palace Square 2, Saint Petersburg, Russia"}]}
