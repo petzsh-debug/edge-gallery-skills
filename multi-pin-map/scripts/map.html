@@ -42,16 +42,15 @@ function makeIcon(i,done){
 async function geocode(address){
   const base='https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=ru';
   const headers={'Accept-Language':'ru,en','User-Agent':'EdgeGallerySkill/1.0'};
-  const q='&q='+encodeURIComponent(address);
-  // 3-step priority: Ekaterinburg city → Sverdlovsk Oblast → all Russia
+  // 3-step priority: explicitly append city/region to query
   const attempts=[
-    base+'&viewbox=60.0,57.15,61.3,56.55&bounded=1'+q,  // ~35km around Ekb
-    base+'&viewbox=57.5,62.5,66.0,56.0&bounded=1'+q,    // Sverdlovsk Oblast
-    base+q                                                // all Russia
+    address+', Екатеринбург, Россия',
+    address+', Свердловская область, Россия',
+    address
   ];
   try{
-    for(const url of attempts){
-      const d=await(await fetch(url,{headers})).json();
+    for(const q of attempts){
+      const d=await(await fetch(base+'&q='+encodeURIComponent(q),{headers})).json();
       if(d&&d[0])return{lat:parseFloat(d[0].lat),lon:parseFloat(d[0].lon)};
     }
   }catch(e){}
