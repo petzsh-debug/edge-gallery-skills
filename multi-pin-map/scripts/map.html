@@ -47,8 +47,8 @@ function init(pins){
   const mapEl=document.getElementById('map');
   const map=L.map(mapEl,{zoomControl:true});
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-    attribution:'© OpenStreetMap',maxZoom:19,crossOrigin:true
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{
+    attribution:'© OpenStreetMap © CARTO',maxZoom:19,subdomains:'abcd'
   }).addTo(map);
 
   const listEl=document.getElementById('list');
