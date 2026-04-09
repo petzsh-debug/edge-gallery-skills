@@ -1,32 +1,24 @@
 ---
-name: Multi-Pin Map
-description: Shows multiple addresses or locations as pins on an interactive map. Use this skill whenever the user provides a list of addresses, places, or locations they want to see on a map.
-version: 1.0.0
-author: custom
+name: multi-pin-map
+description: Shows multiple addresses or locations as numbered pins on an interactive map.
 ---
 
 ## Instructions
 
-When the user provides multiple addresses, places, or locations (2 or more), extract all of them and invoke this skill.
+When the user provides multiple addresses, places, or locations to display on a map, call the `run_js` tool with:
+- script name: `index.html`
+- data: A JSON string with field:
+  - `locations`: an array of objects, each with `label` (short name) and `address` (full address including city and country)
 
-Also use this skill if the user says things like:
+Use this skill when the user says things like:
 - "show these addresses on a map"
 - "pin these locations"
-- "where are these places"
 - "покажи на карте"
-- "отметь адреса на карте"
+- "отметь адреса"
 
-Extract a short human-readable label for each location (street name, place name, or just a number if no name is given).
-
-Invoke the skill using this exact JSON format inside a skill block:
-
-```skill
-{
-  "locations": [
-    { "label": "Название 1", "address": "полный адрес 1" },
-    { "label": "Название 2", "address": "полный адрес 2" }
-  ]
-}
+Example invocation:
+```json
+{"locations": [{"label": "Kremlin", "address": "Red Square, Moscow, Russia"}, {"label": "Hermitage", "address": "Palace Square 2, Saint Petersburg, Russia"}]}
 ```
 
-Always include as much address detail as possible (city, country) for accurate geocoding.
+Always include city and country in addresses for accurate geocoding.
