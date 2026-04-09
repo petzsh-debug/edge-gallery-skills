@@ -38,6 +38,17 @@
     .sheet-icon{font-size:22px;width:32px;text-align:center}
     .sheet-label{flex:1}
     .sheet-sub{font-size:12px;color:#9e9e9e;margin-top:1px}
+
+    /* Copy dialog */
+    #copy-overlay,#maps-menu{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;align-items:flex-end}
+    .dialog{background:white;border-radius:16px 16px 0 0;padding:16px;width:100%;max-height:80vh;display:flex;flex-direction:column;gap:10px}
+    .dialog-title{font-size:15px;font-weight:600;color:#202124}
+    .dialog-sub{font-size:12px;color:#9e9e9e}
+    #copy-area{width:100%;height:120px;border:1px solid #e0e0e0;border-radius:8px;padding:8px;font-size:11px;font-family:monospace;resize:none;color:#555}
+    .dialog-row{display:flex;gap:8px}
+    .btn-primary{flex:1;background:#1a73e8;color:white;border:none;border-radius:8px;padding:12px;font-size:14px;font-weight:600;cursor:pointer}
+    .btn-secondary{flex:1;background:#f0f0f0;color:#333;border:none;border-radius:8px;padding:12px;font-size:14px;cursor:pointer}
+    #maps-list{overflow-y:auto;max-height:50vh}
   </style>
 </head>
 <body>
@@ -78,6 +89,28 @@
         <div class="sheet-sub">Первая точка в Organic Maps / Google Maps</div>
       </div>
     </button>
+  </div>
+</div>
+
+<!-- Copy GPX dialog -->
+<div id="copy-overlay" onclick="if(event.target===this)this.style.display='none'">
+  <div class="dialog">
+    <div class="dialog-title">GPX файл</div>
+    <div class="dialog-sub">Скопируйте и вставьте в файл points.gpx, или отправьте через мессенджер</div>
+    <textarea id="copy-area" readonly></textarea>
+    <div class="dialog-row">
+      <button class="btn-secondary" onclick="document.getElementById('copy-overlay').style.display='none'">Закрыть</button>
+      <button class="btn-primary" id="copy-btn" onclick="copyGpx()">Копировать GPX</button>
+    </div>
+  </div>
+</div>
+
+<!-- Open in maps: pick pin -->
+<div id="maps-menu" onclick="if(event.target===this)this.style.display='none'">
+  <div class="dialog">
+    <div class="dialog-title">Выберите точку</div>
+    <div id="maps-list"></div>
+    <button class="btn-secondary" onclick="document.getElementById('maps-menu').style.display='none'">Закрыть</button>
   </div>
 </div>
 
@@ -139,45 +172,74 @@ function makeGpxFile(foundPins){
 let foundPins=[];
 
 function openSheet(){document.getElementById('sheet-overlay').classList.add('open')}
-function closeSheet(e){if(e.target===document.getElementById('sheet-overlay'))document.getElementById('sheet-overlay').classList.remove('open')}
-
-async function doShare(){
-  closeSheet({target:document.getElementById('sheet-overlay')});
-  const ready=foundPins.filter(p=>p.lat!=null);
-  if(!ready.length){alert('Подождите, адреса ещё загружаются');return;}
-  const file=makeGpxFile(ready);
-  if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
-    try{await navigator.share({files:[file],title:'Точки на карте'});return;}catch(e){}
-  }
-  // Fallback to download
-  doDownload();
+function closeSheet(e){
+  if(e.target===document.getElementById('sheet-overlay')||e===true)
+    document.getElementById('sheet-overlay').classList.remove('open');
 }
 
-function doDownload(){
-  closeSheet({target:document.getElementById('sheet-overlay')});
-  const ready=foundPins.filter(p=>p.lat!=null);
+function getReady(){return foundPins.filter(p=>p.lat!=null);}
+
+// Share: send GPX as text via Android share sheet
+async function doShare(){
+  closeSheet(true);
+  const ready=getReady();
   if(!ready.length){alert('Подождите, адреса ещё загружаются');return;}
   const gpx=buildGpx(ready);
-  const a=document.createElement('a');
-  a.href='data:application/gpx+xml;charset=utf-8,'+encodeURIComponent(gpx);
-  a.download='points.gpx';
-  a.click();
+  if(navigator.share){
+    try{
+      await navigator.share({title:'Точки на карте',text:gpx});
+      return;
+    }catch(e){if(e.name==='AbortError')return;}
+  }
+  // Fallback: show copy dialog
+  showCopyDialog(gpx);
 }
 
-function doOpenMaps(){
-  closeSheet({target:document.getElementById('sheet-overlay')});
-  const ready=foundPins.filter(p=>p.lat!=null);
+// Download: show GPX in dialog with copy button (WebView blocks <a download>)
+function doDownload(){
+  closeSheet(true);
+  const ready=getReady();
   if(!ready.length){alert('Подождите, адреса ещё загружаются');return;}
-  const p=ready[0];
-  // Try Organic Maps URL scheme, fall back to geo: URI
-  const om=`om://map?v=1&ll=${p.lat},${p.lon}&n=${encodeURIComponent(p.label)}`;
-  const geo=`geo:${p.lat},${p.lon}?q=${p.lat},${p.lon}(${encodeURIComponent(p.label)})`;
-  // Try om://, if not handled browser will do nothing — then open geo:
-  const iframe=document.createElement('iframe');
-  iframe.style.display='none';
-  iframe.src=om;
-  document.body.appendChild(iframe);
-  setTimeout(()=>{document.body.removeChild(iframe);window.open(geo,'_blank');},500);
+  showCopyDialog(buildGpx(ready));
+}
+
+function showCopyDialog(text){
+  const overlay=document.getElementById('copy-overlay');
+  document.getElementById('copy-area').value=text;
+  overlay.style.display='flex';
+}
+
+async function copyGpx(){
+  const text=document.getElementById('copy-area').value;
+  try{
+    await navigator.clipboard.writeText(text);
+    document.getElementById('copy-btn').textContent='Скопировано ✓';
+    setTimeout(()=>{document.getElementById('copy-btn').textContent='Копировать GPX';},2000);
+  }catch(e){
+    document.getElementById('copy-area').select();
+  }
+}
+
+// Open in maps: geo: URI opens default maps app, om:// opens Organic Maps
+function doOpenMaps(){
+  closeSheet(true);
+  const ready=getReady();
+  if(!ready.length){alert('Подождите, адреса ещё загружаются');return;}
+  // Show list of all pins
+  const menu=document.getElementById('maps-menu');
+  const list=document.getElementById('maps-list');
+  list.innerHTML='';
+  ready.forEach(p=>{
+    const btn=document.createElement('button');
+    btn.className='sheet-btn';
+    btn.innerHTML=`<span class="sheet-icon">📍</span><div class="sheet-label">${esc(p.label)}<div class="sheet-sub">${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}</div></div>`;
+    btn.onclick=()=>{
+      menu.style.display='none';
+      window.location.href=`geo:${p.lat},${p.lon}?q=${p.lat},${p.lon}(${encodeURIComponent(p.label)})`;
+    };
+    list.appendChild(btn);
+  });
+  menu.style.display='flex';
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
