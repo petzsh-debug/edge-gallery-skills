@@ -9,25 +9,10 @@ window['ai_edge_gallery_get_result'] = async function(data) {
     const locations = params.locations || [];
     if (!locations.length) return JSON.stringify({ error: 'No locations provided' });
 
-    // Geocode all addresses in parallel via Nominatim
-    const geocoded = await Promise.all(locations.map(async (loc) => {
-      try {
-        const resp = await fetch(
-          'https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' +
-          encodeURIComponent(loc.address),
-          { headers: { 'Accept-Language': 'ru,en', 'User-Agent': 'EdgeGallerySkill/1.0' } }
-        );
-        const results = await resp.json();
-        if (results && results[0]) {
-          return { label: loc.label || loc.address, address: loc.address, lat: parseFloat(results[0].lat), lon: parseFloat(results[0].lon) };
-        }
-      } catch(e) {}
-      return { label: loc.label || loc.address, address: loc.address, lat: null, lon: null };
-    }));
-
-    const encoded = encodeURIComponent(JSON.stringify({ pins: geocoded }));
+    // Pass addresses directly to map.html — geocoding happens there progressively
+    const encoded = encodeURIComponent(JSON.stringify({ locations }));
     const url = 'https://petzsh-debug.github.io/edge-gallery-skills/multi-pin-map/scripts/map.html#' + encoded;
-    return JSON.stringify({ webview: { iframe: true, url: url } });
+    return JSON.stringify({ webview: { iframe: true, url: url, aspectRatio: 1.5 } });
   } catch(e) {
     return JSON.stringify({ error: String(e) });
   }
