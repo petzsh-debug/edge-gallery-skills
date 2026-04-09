@@ -39,30 +39,25 @@ function makeIcon(i,done){
   });
 }
 
-const EKB_LAT=56.838, EKB_LON=60.597;
-
 async function geocode(address){
   const base='https://nominatim.openstreetmap.org/search?format=json&limit=10&countrycodes=ru';
   const headers={'Accept-Language':'ru,en','User-Agent':'EdgeGallerySkill/1.0'};
-  const attempts=[
-    address+', Екатеринбург, Россия',
-    address+', Свердловская область, Россия',
+  const queries=[
+    address+', Екатеринбург',
+    address+', Свердловская область',
     address
   ];
-  for(const q of attempts){
+  for(const q of queries){
     try{
       const resp=await fetch(base+'&q='+encodeURIComponent(q),{headers});
       const results=await resp.json();
       if(!results||!results.length) continue;
-      // Pick result closest to Ekaterinburg
-      let best=null, bestDist=Infinity;
-      for(const r of results){
-        const lat=parseFloat(r.lat), lon=parseFloat(r.lon);
-        if(isNaN(lat)||isNaN(lon)) continue;
-        const d=(lat-EKB_LAT)**2+(lon-EKB_LON)**2;
-        if(d<bestDist){bestDist=d;best={lat,lon};}
-      }
-      if(best) return best;
+      // Prefer result whose display_name mentions Ekaterinburg
+      const ekb=results.find(r=>r.display_name&&
+        (r.display_name.includes('Екатеринбург')||r.display_name.includes('Ekaterinburg')));
+      const pick=ekb||results[0];
+      const lat=parseFloat(pick.lat), lon=parseFloat(pick.lon);
+      if(!isNaN(lat)&&!isNaN(lon)) return{lat,lon};
     }catch(e){}
   }
   return null;
