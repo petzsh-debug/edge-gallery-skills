@@ -41,8 +41,8 @@ function makeIcon(i,done){
 
 async function geocode(address){
   try{
-    const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q='+encodeURIComponent(address),
-      {headers:{'Accept-Language':'ru,en','User-Agent':'EdgeGallerySkill/1.0'}});
+    const url='https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=ru&q='+encodeURIComponent(address);
+    const r=await fetch(url,{headers:{'Accept-Language':'ru,en','User-Agent':'EdgeGallerySkill/1.0'}});
     const d=await r.json();
     if(d&&d[0])return{lat:parseFloat(d[0].lat),lon:parseFloat(d[0].lon)};
   }catch(e){}

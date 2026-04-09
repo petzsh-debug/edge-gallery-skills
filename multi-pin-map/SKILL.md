@@ -18,8 +18,8 @@ Call the `run_js` tool with the following exact parameters:
 
 - data: A JSON string with the following field:
   - locations: An array of objects, each with:
-    - label: A short human-readable name for the location
-    - address: The full address including city and country (for accurate geocoding)
+    - label: A short name (e.g. "Шварца 16")
+    - address: The FULL address with street, city, and country. CRITICAL: always include the city. If the user did not specify a city, ask them before calling this skill.
 
 Example data value:
-{"locations":[{"label":"Kremlin","address":"Red Square, Moscow, Russia"},{"label":"Hermitage","address":"Palace Square 2, Saint Petersburg, Russia"}]}
+{"locations":[{"label":"Шварца 16","address":"улица Шварца 16, Екатеринбург, Россия"},{"label":"Родонитовая 5","address":"улица Родонитовая 5, Екатеринбург, Россия"}]}
