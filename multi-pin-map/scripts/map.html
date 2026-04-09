@@ -40,23 +40,31 @@ function makeIcon(i,done){
 }
 
 async function geocode(address){
+  const hdrs={'Accept-Language':'ru,en','User-Agent':'EdgeGallerySkill/1.0'};
+
+  // 1. Photon (komoot) — biased to Ekaterinburg, better house number coverage
+  try{
+    const q=encodeURIComponent(address+', Екатеринбург');
+    const url='https://photon.komoot.io/api/?q='+q+'&limit=5&lat=56.838&lon=60.597&lang=ru';
+    const data=await(await fetch(url,{headers:hdrs})).json();
+    if(data&&data.features&&data.features.length){
+      // prefer result with house number in properties
+      const withHouse=data.features.find(f=>f.properties&&f.properties.housenumber);
+      const pick=(withHouse||data.features[0]).geometry.coordinates; // [lon, lat]
+      if(pick) return{lat:pick[1],lon:pick[0]};
+    }
+  }catch(e){}
+
+  // 2. Nominatim fallback
   const base='https://nominatim.openstreetmap.org/search?format=json&limit=10&countrycodes=ru';
-  const headers={'Accept-Language':'ru,en','User-Agent':'EdgeGallerySkill/1.0'};
-  const queries=[
-    address+', Екатеринбург',
-    address+', Свердловская область',
-    address
-  ];
-  for(const q of queries){
+  for(const q of[address+', Екатеринбург',address+', Свердловская область',address]){
     try{
-      const resp=await fetch(base+'&q='+encodeURIComponent(q),{headers});
-      const results=await resp.json();
+      const results=await(await fetch(base+'&q='+encodeURIComponent(q),{headers:hdrs})).json();
       if(!results||!results.length) continue;
-      // Prefer result whose display_name mentions Ekaterinburg
       const ekb=results.find(r=>r.display_name&&
         (r.display_name.includes('Екатеринбург')||r.display_name.includes('Ekaterinburg')));
       const pick=ekb||results[0];
-      const lat=parseFloat(pick.lat), lon=parseFloat(pick.lon);
+      const lat=parseFloat(pick.lat),lon=parseFloat(pick.lon);
       if(!isNaN(lat)&&!isNaN(lon)) return{lat,lon};
     }catch(e){}
   }
