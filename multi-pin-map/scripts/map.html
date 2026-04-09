@@ -40,10 +40,19 @@ function makeIcon(i,done){
 }
 
 async function geocode(address){
+  // Sverdlovsk Oblast viewbox: prefer local results, fall back to all Russia
+  const base='https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=ru&accept-language=ru,en';
+  const sverdViewbox='&viewbox=57.5,62.5,66.0,56.0&bounded=1';
+  const headers={'Accept-Language':'ru,en','User-Agent':'EdgeGallerySkill/1.0'};
+  const q='&q='+encodeURIComponent(address);
   try{
-    const url='https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=ru&q='+encodeURIComponent(address);
-    const r=await fetch(url,{headers:{'Accept-Language':'ru,en','User-Agent':'EdgeGallerySkill/1.0'}});
-    const d=await r.json();
+    // First try: within Sverdlovsk Oblast
+    let r=await fetch(base+sverdViewbox+q,{headers});
+    let d=await r.json();
+    if(d&&d[0])return{lat:parseFloat(d[0].lat),lon:parseFloat(d[0].lon)};
+    // Fallback: all Russia
+    r=await fetch(base+q,{headers});
+    d=await r.json();
     if(d&&d[0])return{lat:parseFloat(d[0].lat),lon:parseFloat(d[0].lon)};
   }catch(e){}
   return null;
@@ -65,7 +74,7 @@ window.addEventListener('load',()=>{
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
     attribution:'© OpenStreetMap',maxZoom:19
   }).addTo(map);
-  map.setView([55.75,37.62],10);
+  map.setView([56.838,60.597],12); // Ekaterinburg default
 
   // Fix iframe sizing
   setTimeout(()=>map.invalidateSize(),200);
