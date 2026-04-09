@@ -9,9 +9,14 @@
     *{margin:0;padding:0;box-sizing:border-box}
     html,body{height:100%;width:100%;overflow:hidden}
     body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f0f2f5;display:flex;flex-direction:column}
+
     #header{background:#1a73e8;color:white;padding:10px 16px;font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px;flex-shrink:0;min-height:44px}
     .count{background:rgba(255,255,255,.25);border-radius:12px;padding:2px 8px;font-size:13px}
+    #share-btn{margin-left:auto;background:rgba(255,255,255,.2);border:none;color:white;border-radius:20px;padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px}
+    #share-btn:active{background:rgba(255,255,255,.35)}
+
     #map{flex:1;width:100%;min-height:200px}
+
     #list{background:white;max-height:160px;overflow-y:auto;border-top:1px solid #e0e0e0;flex-shrink:0}
     .item{display:flex;align-items:flex-start;gap:10px;padding:10px 16px;border-bottom:1px solid #f0f0f0;cursor:pointer}
     .item:last-child{border-bottom:none}
@@ -20,17 +25,69 @@
     .lbl{font-size:13px;font-weight:600;color:#202124;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .adr{font-size:11px;color:#5f6368;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .note{font-size:11px;color:#9e9e9e;margin-top:2px}
+
+    /* Bottom sheet */
+    #sheet-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000}
+    #sheet-overlay.open{display:block}
+    #sheet{position:fixed;bottom:0;left:0;right:0;background:white;border-radius:16px 16px 0 0;padding:12px 0 24px;z-index:1001;transform:translateY(100%);transition:transform .25s ease}
+    #sheet-overlay.open #sheet{transform:translateY(0)}
+    .sheet-handle{width:36px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 16px}
+    .sheet-title{font-size:13px;color:#9e9e9e;padding:0 20px 8px;font-weight:500}
+    .sheet-btn{display:flex;align-items:center;gap:14px;padding:14px 20px;font-size:15px;color:#202124;cursor:pointer;border:none;background:none;width:100%;text-align:left}
+    .sheet-btn:active{background:#f5f5f5}
+    .sheet-icon{font-size:22px;width:32px;text-align:center}
+    .sheet-label{flex:1}
+    .sheet-sub{font-size:12px;color:#9e9e9e;margin-top:1px}
   </style>
 </head>
 <body>
-<div id="header">📍 Multi-Pin Map <span class="count" id="cnt">…</span></div>
+
+<div id="header">
+  📍 Multi-Pin Map <span class="count" id="cnt">…</span>
+  <button id="share-btn" onclick="openSheet()">↑ Экспорт</button>
+</div>
 <div id="map"></div>
 <div id="list"></div>
+
+<!-- Bottom sheet -->
+<div id="sheet-overlay" onclick="closeSheet(event)">
+  <div id="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Экспорт точек</div>
+
+    <button class="sheet-btn" onclick="doShare()">
+      <span class="sheet-icon">📤</span>
+      <div class="sheet-label">
+        Поделиться
+        <div class="sheet-sub">GPX файл → Organic Maps, OsmAnd, Telegram…</div>
+      </div>
+    </button>
+
+    <button class="sheet-btn" onclick="doDownload()">
+      <span class="sheet-icon">⬇️</span>
+      <div class="sheet-label">
+        Скачать GPX
+        <div class="sheet-sub">Открыть потом в любом приложении</div>
+      </div>
+    </button>
+
+    <button class="sheet-btn" onclick="doOpenMaps()">
+      <span class="sheet-icon">🗺️</span>
+      <div class="sheet-label">
+        Открыть в картах
+        <div class="sheet-sub">Первая точка в Organic Maps / Google Maps</div>
+      </div>
+    </button>
+  </div>
+</div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const COLORS=['#1a73e8','#e53935','#43a047','#fb8c00','#8e24aa','#00acc1','#f4511e','#6d4c41'];
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function escXml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 function plural(n){if(n%10===1&&n%100!==11)return'место';if([2,3,4].includes(n%10)&&![12,13,14].includes(n%100))return'места';return'мест'}
+
 function makeIcon(i,done){
   const c=done?COLORS[i%COLORS.length]:'#aaa';
   return L.divIcon({
@@ -39,30 +96,24 @@ function makeIcon(i,done){
   });
 }
 
+// ── Geocoding ─────────────────────────────────────────────────────────────────
 async function geocode(address){
   const hdrs={'Accept-Language':'ru,en','User-Agent':'EdgeGallerySkill/1.0'};
-
-  // 1. Photon (komoot) — biased to Ekaterinburg, better house number coverage
   try{
     const q=encodeURIComponent(address+', Екатеринбург');
-    const url='https://photon.komoot.io/api/?q='+q+'&limit=5&lat=56.838&lon=60.597&lang=ru';
-    const data=await(await fetch(url,{headers:hdrs})).json();
+    const data=await(await fetch('https://photon.komoot.io/api/?q='+q+'&limit=5&lat=56.838&lon=60.597&lang=ru',{headers:hdrs})).json();
     if(data&&data.features&&data.features.length){
-      // prefer result with house number in properties
       const withHouse=data.features.find(f=>f.properties&&f.properties.housenumber);
-      const pick=(withHouse||data.features[0]).geometry.coordinates; // [lon, lat]
+      const pick=(withHouse||data.features[0]).geometry.coordinates;
       if(pick) return{lat:pick[1],lon:pick[0]};
     }
   }catch(e){}
-
-  // 2. Nominatim fallback
   const base='https://nominatim.openstreetmap.org/search?format=json&limit=10&countrycodes=ru';
   for(const q of[address+', Екатеринбург',address+', Свердловская область',address]){
     try{
       const results=await(await fetch(base+'&q='+encodeURIComponent(q),{headers:hdrs})).json();
       if(!results||!results.length) continue;
-      const ekb=results.find(r=>r.display_name&&
-        (r.display_name.includes('Екатеринбург')||r.display_name.includes('Ekaterinburg')));
+      const ekb=results.find(r=>r.display_name&&(r.display_name.includes('Екатеринбург')||r.display_name.includes('Ekaterinburg')));
       const pick=ekb||results[0];
       const lat=parseFloat(pick.lat),lon=parseFloat(pick.lon);
       if(!isNaN(lat)&&!isNaN(lon)) return{lat,lon};
@@ -71,6 +122,65 @@ async function geocode(address){
   return null;
 }
 
+// ── GPX generation ────────────────────────────────────────────────────────────
+function buildGpx(foundPins){
+  const wpts=foundPins.map(p=>
+    `  <wpt lat="${p.lat}" lon="${p.lon}">\n    <name>${escXml(p.label)}</name>\n    <desc>${escXml(p.address)}</desc>\n  </wpt>`
+  ).join('\n');
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Multi-Pin Map" xmlns="http://www.topografix.com/GPX/1/1">\n${wpts}\n</gpx>`;
+}
+
+function makeGpxFile(foundPins){
+  const gpx=buildGpx(foundPins);
+  return new File([gpx],'points.gpx',{type:'application/gpx+xml'});
+}
+
+// ── Export actions ────────────────────────────────────────────────────────────
+let foundPins=[];
+
+function openSheet(){document.getElementById('sheet-overlay').classList.add('open')}
+function closeSheet(e){if(e.target===document.getElementById('sheet-overlay'))document.getElementById('sheet-overlay').classList.remove('open')}
+
+async function doShare(){
+  closeSheet({target:document.getElementById('sheet-overlay')});
+  const ready=foundPins.filter(p=>p.lat!=null);
+  if(!ready.length){alert('Подождите, адреса ещё загружаются');return;}
+  const file=makeGpxFile(ready);
+  if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+    try{await navigator.share({files:[file],title:'Точки на карте'});return;}catch(e){}
+  }
+  // Fallback to download
+  doDownload();
+}
+
+function doDownload(){
+  closeSheet({target:document.getElementById('sheet-overlay')});
+  const ready=foundPins.filter(p=>p.lat!=null);
+  if(!ready.length){alert('Подождите, адреса ещё загружаются');return;}
+  const gpx=buildGpx(ready);
+  const a=document.createElement('a');
+  a.href='data:application/gpx+xml;charset=utf-8,'+encodeURIComponent(gpx);
+  a.download='points.gpx';
+  a.click();
+}
+
+function doOpenMaps(){
+  closeSheet({target:document.getElementById('sheet-overlay')});
+  const ready=foundPins.filter(p=>p.lat!=null);
+  if(!ready.length){alert('Подождите, адреса ещё загружаются');return;}
+  const p=ready[0];
+  // Try Organic Maps URL scheme, fall back to geo: URI
+  const om=`om://map?v=1&ll=${p.lat},${p.lon}&n=${encodeURIComponent(p.label)}`;
+  const geo=`geo:${p.lat},${p.lon}?q=${p.lat},${p.lon}(${encodeURIComponent(p.label)})`;
+  // Try om://, if not handled browser will do nothing — then open geo:
+  const iframe=document.createElement('iframe');
+  iframe.style.display='none';
+  iframe.src=om;
+  document.body.appendChild(iframe);
+  setTimeout(()=>{document.body.removeChild(iframe);window.open(geo,'_blank');},500);
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
 window.addEventListener('load',()=>{
   let data=null;
   if(location.hash.length>1){try{data=JSON.parse(decodeURIComponent(location.hash.slice(1)))}catch(e){}}
@@ -81,23 +191,20 @@ window.addEventListener('load',()=>{
     {label:'Третьяковская галерея',address:'Лаврушинский переулок 10, Москва, Россия'}
   ];
 
+  // Init foundPins array (filled as geocoding completes)
+  foundPins=locations.map(loc=>({label:loc.label||loc.address,address:loc.address,lat:null,lon:null}));
+
   document.getElementById('cnt').textContent=`${locations.length} ${plural(locations.length)}`;
 
   const map=L.map('map',{zoomControl:true});
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-    attribution:'© OpenStreetMap',maxZoom:19
-  }).addTo(map);
-  map.setView([56.838,60.597],12); // Ekaterinburg default
-
-  // Fix iframe sizing
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(map);
+  map.setView([56.838,60.597],12);
   setTimeout(()=>map.invalidateSize(),200);
   window.addEventListener('resize',()=>map.invalidateSize());
 
   const listEl=document.getElementById('list');
-  const markers=[];
   const bounds=[];
 
-  // Render list items immediately, geocode progressively
   const items=locations.map((loc,i)=>{
     const div=document.createElement('div');
     div.className='item';
@@ -109,19 +216,17 @@ window.addEventListener('load',()=>{
     return div;
   });
 
-  // Geocode each address and add pin as soon as it's found
   locations.forEach(async(loc,i)=>{
     const coords=await geocode(loc.address);
     const statusEl=document.getElementById('s'+i);
     const badgeEl=document.getElementById('b'+i);
 
-    if(!coords){
-      statusEl.textContent='⚠ Не найден';
-      return;
-    }
+    if(!coords){statusEl.textContent='⚠ Не найден';return;}
 
     statusEl.textContent=coords.lat.toFixed(4)+', '+coords.lon.toFixed(4);
     badgeEl.style.background=COLORS[i%COLORS.length];
+    foundPins[i].lat=coords.lat;
+    foundPins[i].lon=coords.lon;
 
     const m=L.marker([coords.lat,coords.lon],{icon:makeIcon(i,true)}).addTo(map)
       .bindPopup(`<b>${esc(loc.label||loc.address)}</b><br><small>${esc(loc.address)}</small>`);
@@ -134,7 +239,6 @@ window.addEventListener('load',()=>{
       m.openPopup();
     });
 
-    // Re-fit bounds as pins arrive
     if(bounds.length===1) map.setView(bounds[0],14);
     else map.fitBounds(bounds,{padding:[40,40]});
   });
