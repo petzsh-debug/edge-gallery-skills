@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+  <meta http-equiv="Pragma" content="no-cache"/>
+  <meta http-equiv="Expires" content="0"/>
   <title>Multi-Pin Map</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <style>
@@ -179,29 +182,45 @@ function closeSheet(e){
 
 function getReady(){return foundPins.filter(p=>p.lat!=null);}
 
-// Скачать GPX файл (data URI обходит ограничения iframe)
+// Поделиться GPX
+async function doShare(){
+  closeSheet(true);
+  const ready=getReady();
+  if(!ready.length){alert('Подождите, адреса ещё загружаются');return;}
+  const gpx=buildGpx(ready);
+  // Способ 1: Web Share API (если доступен — не в iframe)
+  if(navigator.share){
+    try{await navigator.share({title:'points.gpx',text:gpx});return;}
+    catch(e){if(e.name==='AbortError')return;}
+  }
+  // Способ 2: postMessage к родителю (если Edge Gallery слушает)
+  try{window.parent.postMessage({type:'share',text:gpx,title:'points.gpx'},'*');}catch(e){}
+  // Способ 3: копи-диалог (всегда работает)
+  showCopyDialog(gpx);
+}
+
+// Скачать GPX
 function doDownload(){
   closeSheet(true);
   const ready=getReady();
   if(!ready.length){alert('Подождите, адреса ещё загружаются');return;}
   const gpx=buildGpx(ready);
-  const a=document.createElement('a');
-  a.href='data:application/gpx+xml;charset=utf-8,'+encodeURIComponent(gpx);
-  a.download='points.gpx';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-}
-
-// Поделиться GPX (скачать + пользователь сам отправит)
-function doShare(){
-  doDownload();
+  // Способ 1: data URI download
+  try{
+    const a=document.createElement('a');
+    a.href='data:application/gpx+xml;charset=utf-8,'+encodeURIComponent(gpx);
+    a.download='points.gpx';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }catch(e){}
+  // Всегда показать копи-диалог как fallback (в iframe download может молча не сработать)
+  showCopyDialog(gpx);
 }
 
 function showCopyDialog(text){
-  const overlay=document.getElementById('copy-overlay');
   document.getElementById('copy-area').value=text;
-  overlay.style.display='flex';
+  document.getElementById('copy-overlay').style.display='flex';
 }
 
 function copyGpx(){
@@ -217,7 +236,7 @@ function copyGpx(){
   }
 }
 
-// Открыть в картах — через <a target="_top"> чтобы выйти из iframe
+// Открыть в картах
 function doOpenMaps(){
   closeSheet(true);
   const ready=getReady();
@@ -228,15 +247,21 @@ function doOpenMaps(){
   ready.forEach(p=>{
     const btn=document.createElement('button');
     btn.className='sheet-btn';
+    const mapsUrl=`https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lon}`;
     btn.innerHTML=`<span class="sheet-icon">📍</span><div class="sheet-label">${esc(p.label)}<div class="sheet-sub">${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}</div></div>`;
     btn.onclick=()=>{
       menu.style.display='none';
-      const a=document.createElement('a');
-      a.href=`https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lon}`;
-      a.target='_top';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+      // Способ 1: window.top.location (если iframe разрешает)
+      try{window.top.location.href=mapsUrl;return;}catch(e){}
+      // Способ 2: postMessage к родителю
+      try{window.parent.postMessage({type:'openUrl',url:mapsUrl},'*');}catch(e){}
+      // Способ 3: geo: URI
+      try{window.location.href=`geo:${p.lat},${p.lon}?q=${p.lat},${p.lon}(${encodeURIComponent(p.label)})`;return;}catch(e){}
+      // Способ 4: скопировать координаты
+      const coords=`${p.lat},${p.lon}`;
+      const area=document.getElementById('copy-area');
+      area.value=coords+'\n\nGoogle Maps: '+mapsUrl;
+      document.getElementById('copy-overlay').style.display='flex';
     };
     list.appendChild(btn);
   });
