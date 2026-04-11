@@ -179,50 +179,13 @@ function closeSheet(e){
 
 function getReady(){return foundPins.filter(p=>p.lat!=null);}
 
-// Share: GPX файл через Web Share API (работает в Android WebView)
+// Share: текст GPX через Android share sheet
 async function doShare(){
   closeSheet(true);
   const ready=getReady();
   if(!ready.length){alert('Подождите, адреса ещё загружаются');return;}
-  if(!navigator.share){showCopyDialog(buildGpx(ready));return;}
-  // Сначала пробуем поделиться файлом
-  try{
-    const file=makeGpxFile(ready);
-    await navigator.share({title:'Точки на карте',files:[file]});
-    return;
-  }catch(e){if(e.name==='AbortError')return;}
-  // Файл не поддерживается — шарим как текст
-  try{
-    await navigator.share({title:'points.gpx',text:buildGpx(ready)});
-    return;
-  }catch(e){if(e.name==='AbortError')return;}
-  showCopyDialog(buildGpx(ready));
-}
-
-// Download: в Android WebView blob-download не работает, поэтому используем share
-async function doDownload(){
-  closeSheet(true);
-  const ready=getReady();
-  if(!ready.length){alert('Подождите, адреса ещё загружаются');return;}
   const gpx=buildGpx(ready);
-  // Пробуем скачать через <a download> (работает в десктопных браузерах)
-  try{
-    const blob=new Blob([gpx],{type:'application/gpx+xml'});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement('a');
-    a.href=url;a.download='points.gpx';
-    document.body.appendChild(a);a.click();
-    setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},500);
-    // Если через 1 сек ничего не произошло (WebView) — показываем share/copy
-    await new Promise(r=>setTimeout(r,800));
-  }catch(e){}
-  // Fallback для WebView: share или copy
   if(navigator.share){
-    try{
-      const file=makeGpxFile(ready);
-      await navigator.share({title:'Точки на карте',files:[file]});
-      return;
-    }catch(e){if(e.name==='AbortError')return;}
     try{
       await navigator.share({title:'points.gpx',text:gpx});
       return;
@@ -231,20 +194,35 @@ async function doDownload(){
   showCopyDialog(gpx);
 }
 
+// Download: показать GPX для копирования
+function doDownload(){
+  closeSheet(true);
+  const ready=getReady();
+  if(!ready.length){alert('Подождите, адреса ещё загружаются');return;}
+  showCopyDialog(buildGpx(ready));
+}
+
 function showCopyDialog(text){
   const overlay=document.getElementById('copy-overlay');
   document.getElementById('copy-area').value=text;
   overlay.style.display='flex';
 }
 
-async function copyGpx(){
-  const text=document.getElementById('copy-area').value;
-  try{
-    await navigator.clipboard.writeText(text);
-    document.getElementById('copy-btn').textContent='Скопировано ✓';
-    setTimeout(()=>{document.getElementById('copy-btn').textContent='Копировать GPX';},2000);
-  }catch(e){
-    document.getElementById('copy-area').select();
+function copyGpx(){
+  const area=document.getElementById('copy-area');
+  const btn=document.getElementById('copy-btn');
+  area.select();
+  area.setSelectionRange(0,99999);
+  let ok=false;
+  try{ok=document.execCommand('copy');}catch(e){}
+  if(ok){
+    btn.textContent='Скопировано ✓';
+    setTimeout(()=>{btn.textContent='Копировать GPX';},2000);
+  }else if(navigator.clipboard){
+    navigator.clipboard.writeText(area.value).then(()=>{
+      btn.textContent='Скопировано ✓';
+      setTimeout(()=>{btn.textContent='Копировать GPX';},2000);
+    }).catch(()=>{});
   }
 }
 
@@ -263,7 +241,7 @@ function doOpenMaps(){
     btn.innerHTML=`<span class="sheet-icon">📍</span><div class="sheet-label">${esc(p.label)}<div class="sheet-sub">${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}</div></div>`;
     btn.onclick=()=>{
       menu.style.display='none';
-      window.open(`https://maps.google.com/maps?q=${p.lat},${p.lon}`,'_blank');
+      window.location.href=`https://maps.google.com/maps?q=${p.lat},${p.lon}`;
     };
     list.appendChild(btn);
   });
