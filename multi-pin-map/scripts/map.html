@@ -179,40 +179,56 @@ function closeSheet(e){
 
 function getReady(){return foundPins.filter(p=>p.lat!=null);}
 
-// Share: send GPX as a real file via Web Share API
+// Share: GPX файл через Web Share API (работает в Android WebView)
 async function doShare(){
   closeSheet(true);
   const ready=getReady();
   if(!ready.length){alert('Подождите, адреса ещё загружаются');return;}
-  const file=makeGpxFile(ready);
-  if(navigator.canShare&&navigator.canShare({files:[file]})){
-    try{
-      await navigator.share({title:'Точки на карте',files:[file]});
-      return;
-    }catch(e){if(e.name==='AbortError')return;}
-  }
-  // Fallback to download
-  _downloadGpx(ready);
+  if(!navigator.share){showCopyDialog(buildGpx(ready));return;}
+  // Сначала пробуем поделиться файлом
+  try{
+    const file=makeGpxFile(ready);
+    await navigator.share({title:'Точки на карте',files:[file]});
+    return;
+  }catch(e){if(e.name==='AbortError')return;}
+  // Файл не поддерживается — шарим как текст
+  try{
+    await navigator.share({title:'points.gpx',text:buildGpx(ready)});
+    return;
+  }catch(e){if(e.name==='AbortError')return;}
+  showCopyDialog(buildGpx(ready));
 }
 
-// Download: trigger real file-save dialog via blob URL
-function doDownload(){
+// Download: в Android WebView blob-download не работает, поэтому используем share
+async function doDownload(){
   closeSheet(true);
   const ready=getReady();
   if(!ready.length){alert('Подождите, адреса ещё загружаются');return;}
-  _downloadGpx(ready);
-}
-
-function _downloadGpx(ready){
   const gpx=buildGpx(ready);
-  const blob=new Blob([gpx],{type:'application/gpx+xml'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url;
-  a.download='points.gpx';
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1000);
+  // Пробуем скачать через <a download> (работает в десктопных браузерах)
+  try{
+    const blob=new Blob([gpx],{type:'application/gpx+xml'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download='points.gpx';
+    document.body.appendChild(a);a.click();
+    setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},500);
+    // Если через 1 сек ничего не произошло (WebView) — показываем share/copy
+    await new Promise(r=>setTimeout(r,800));
+  }catch(e){}
+  // Fallback для WebView: share или copy
+  if(navigator.share){
+    try{
+      const file=makeGpxFile(ready);
+      await navigator.share({title:'Точки на карте',files:[file]});
+      return;
+    }catch(e){if(e.name==='AbortError')return;}
+    try{
+      await navigator.share({title:'points.gpx',text:gpx});
+      return;
+    }catch(e){if(e.name==='AbortError')return;}
+  }
+  showCopyDialog(gpx);
 }
 
 function showCopyDialog(text){
@@ -247,13 +263,7 @@ function doOpenMaps(){
     btn.innerHTML=`<span class="sheet-icon">📍</span><div class="sheet-label">${esc(p.label)}<div class="sheet-sub">${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}</div></div>`;
     btn.onclick=()=>{
       menu.style.display='none';
-      // geo: works on Android; on desktop open Google Maps in browser
-      const isMobile=/Android|iPhone|iPad/i.test(navigator.userAgent);
-      if(isMobile){
-        window.location.href=`geo:${p.lat},${p.lon}?q=${p.lat},${p.lon}(${encodeURIComponent(p.label)})`;
-      }else{
-        window.open(`https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lon}`,'_blank');
-      }
+      window.open(`https://maps.google.com/maps?q=${p.lat},${p.lon}`,'_blank');
     };
     list.appendChild(btn);
   });
