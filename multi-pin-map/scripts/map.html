@@ -188,14 +188,10 @@ async function doShare(){
   const ready=getReady();
   if(!ready.length){alert('Подождите, адреса ещё загружаются');return;}
   const gpx=buildGpx(ready);
-  // Способ 1: Web Share API (если доступен — не в iframe)
   if(navigator.share){
     try{await navigator.share({title:'points.gpx',text:gpx});return;}
     catch(e){if(e.name==='AbortError')return;}
   }
-  // Способ 2: postMessage к родителю (если Edge Gallery слушает)
-  try{window.parent.postMessage({type:'share',text:gpx,title:'points.gpx'},'*');}catch(e){}
-  // Способ 3: копи-диалог (всегда работает)
   showCopyDialog(gpx);
 }
 
@@ -205,17 +201,15 @@ function doDownload(){
   const ready=getReady();
   if(!ready.length){alert('Подождите, адреса ещё загружаются');return;}
   const gpx=buildGpx(ready);
-  // Способ 1: data URI download
-  try{
-    const a=document.createElement('a');
-    a.href='data:application/gpx+xml;charset=utf-8,'+encodeURIComponent(gpx);
-    a.download='points.gpx';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  }catch(e){}
-  // Всегда показать копи-диалог как fallback (в iframe download может молча не сработать)
-  showCopyDialog(gpx);
+  // data URI download
+  const a=document.createElement('a');
+  a.href='data:application/gpx+xml;charset=utf-8,'+encodeURIComponent(gpx);
+  a.download='points.gpx';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  // Если download не сработал (WebView), покажем копи-диалог через 500мс
+  setTimeout(()=>{if(document.hasFocus())showCopyDialog(gpx);},500);
 }
 
 function showCopyDialog(text){
@@ -251,17 +245,8 @@ function doOpenMaps(){
     btn.innerHTML=`<span class="sheet-icon">📍</span><div class="sheet-label">${esc(p.label)}<div class="sheet-sub">${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}</div></div>`;
     btn.onclick=()=>{
       menu.style.display='none';
-      // Способ 1: window.top.location (если iframe разрешает)
-      try{window.top.location.href=mapsUrl;return;}catch(e){}
-      // Способ 2: postMessage к родителю
-      try{window.parent.postMessage({type:'openUrl',url:mapsUrl},'*');}catch(e){}
-      // Способ 3: geo: URI
-      try{window.location.href=`geo:${p.lat},${p.lon}?q=${p.lat},${p.lon}(${encodeURIComponent(p.label)})`;return;}catch(e){}
-      // Способ 4: скопировать координаты
-      const coords=`${p.lat},${p.lon}`;
-      const area=document.getElementById('copy-area');
-      area.value=coords+'\n\nGoogle Maps: '+mapsUrl;
-      document.getElementById('copy-overlay').style.display='flex';
+      // Если не в iframe — прямая навигация
+      try{window.location.href=mapsUrl;return;}catch(e){}
     };
     list.appendChild(btn);
   });

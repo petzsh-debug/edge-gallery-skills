@@ -12,7 +12,7 @@ window['ai_edge_gallery_get_result'] = async function(data) {
     // Pass addresses directly to map.html — geocoding happens there progressively
     const encoded = encodeURIComponent(JSON.stringify({ locations }));
     const url = 'https://petzsh-debug.github.io/edge-gallery-skills/multi-pin-map/scripts/map.html?v=' + Date.now() + '#' + encoded;
-    return JSON.stringify({ webview: { iframe: true, url: url, aspectRatio: 1.5 } });
+    return JSON.stringify({ webview: { url: url, aspectRatio: 1.5 } });
   } catch(e) {
     return JSON.stringify({ error: String(e) });
   }
