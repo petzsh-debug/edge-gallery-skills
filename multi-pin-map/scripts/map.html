@@ -179,27 +179,23 @@ function closeSheet(e){
 
 function getReady(){return foundPins.filter(p=>p.lat!=null);}
 
-// Share: текст GPX через Android share sheet
-async function doShare(){
-  closeSheet(true);
-  const ready=getReady();
-  if(!ready.length){alert('Подождите, адреса ещё загружаются');return;}
-  const gpx=buildGpx(ready);
-  if(navigator.share){
-    try{
-      await navigator.share({title:'points.gpx',text:gpx});
-      return;
-    }catch(e){if(e.name==='AbortError')return;}
-  }
-  showCopyDialog(gpx);
-}
-
-// Download: показать GPX для копирования
+// Скачать GPX файл (data URI обходит ограничения iframe)
 function doDownload(){
   closeSheet(true);
   const ready=getReady();
   if(!ready.length){alert('Подождите, адреса ещё загружаются');return;}
-  showCopyDialog(buildGpx(ready));
+  const gpx=buildGpx(ready);
+  const a=document.createElement('a');
+  a.href='data:application/gpx+xml;charset=utf-8,'+encodeURIComponent(gpx);
+  a.download='points.gpx';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+// Поделиться GPX (скачать + пользователь сам отправит)
+function doShare(){
+  doDownload();
 }
 
 function showCopyDialog(text){
@@ -218,20 +214,14 @@ function copyGpx(){
   if(ok){
     btn.textContent='Скопировано ✓';
     setTimeout(()=>{btn.textContent='Копировать GPX';},2000);
-  }else if(navigator.clipboard){
-    navigator.clipboard.writeText(area.value).then(()=>{
-      btn.textContent='Скопировано ✓';
-      setTimeout(()=>{btn.textContent='Копировать GPX';},2000);
-    }).catch(()=>{});
   }
 }
 
-// Open in maps: geo: URI opens default maps app, om:// opens Organic Maps
+// Открыть в картах — через <a target="_top"> чтобы выйти из iframe
 function doOpenMaps(){
   closeSheet(true);
   const ready=getReady();
   if(!ready.length){alert('Подождите, адреса ещё загружаются');return;}
-  // Show list of all pins
   const menu=document.getElementById('maps-menu');
   const list=document.getElementById('maps-list');
   list.innerHTML='';
@@ -241,7 +231,12 @@ function doOpenMaps(){
     btn.innerHTML=`<span class="sheet-icon">📍</span><div class="sheet-label">${esc(p.label)}<div class="sheet-sub">${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}</div></div>`;
     btn.onclick=()=>{
       menu.style.display='none';
-      window.location.href=`https://maps.google.com/maps?q=${p.lat},${p.lon}`;
+      const a=document.createElement('a');
+      a.href=`https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lon}`;
+      a.target='_top';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
     };
     list.appendChild(btn);
   });
