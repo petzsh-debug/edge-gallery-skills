@@ -6,107 +6,68 @@
   <title>Weather</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background: linear-gradient(160deg, #1b2f4e 0%, #0d1b2e 100%);
       color: #e8eaed;
-      min-height: 100vh;
-      padding: 14px;
+      padding: 2.5vw;
+      display: flex;
+      align-items: stretch;
     }
     .card {
+      width: 100%;
       background: rgba(255,255,255,0.07);
       border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 18px;
-      padding: 18px;
+      border-radius: 3vw;
+      padding: 2.5vw 3vw;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5vw;
     }
+
+    /* Header */
     .header {
       display: flex;
       justify-content: space-between;
       align-items: baseline;
-      margin-bottom: 14px;
     }
-    .location {
-      font-size: 16px;
-      font-weight: 600;
-    }
-    .source {
-      font-size: 11px;
-      color: #6e8caa;
-    }
+    .location { font-size: 3.8vw; font-weight: 600; }
+    .source { font-size: 2.6vw; color: #6e8caa; }
+
+    /* Current conditions */
     .current {
       display: flex;
       align-items: center;
-      gap: 14px;
-      margin-bottom: 16px;
+      gap: 3vw;
     }
-    .current-left {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      min-width: 64px;
-    }
-    .current-emoji { font-size: 44px; line-height: 1; }
-    .current-right { flex: 1; }
-    .current-temp {
-      font-size: 48px;
-      font-weight: 200;
-      line-height: 1;
-      letter-spacing: -2px;
-    }
-    .current-feels {
-      font-size: 13px;
-      color: #8ab4c8;
-      margin-top: 3px;
-    }
-    .current-wind {
-      font-size: 13px;
-      color: #8ab4c8;
-      margin-top: 3px;
-    }
-    .divider {
-      height: 1px;
-      background: rgba(255,255,255,0.08);
-      margin: 14px 0;
-    }
-    .forecast {
-      display: flex;
-      gap: 8px;
-    }
+    .current-emoji { font-size: 11vw; line-height: 1; }
+    .current-right { display: flex; flex-direction: column; gap: 0.5vw; }
+    .current-temp { font-size: 12vw; font-weight: 200; line-height: 1; letter-spacing: -0.5vw; }
+    .current-sub { font-size: 3vw; color: #8ab4c8; }
+
+    /* Divider */
+    .divider { height: 1px; background: rgba(255,255,255,0.08); }
+
+    /* Forecast */
+    .forecast { display: flex; gap: 1.5vw; }
     .day {
       flex: 1;
       background: rgba(255,255,255,0.05);
-      border-radius: 12px;
-      padding: 10px 6px;
+      border-radius: 2vw;
+      padding: 1.5vw 1vw;
       text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 0.8vw;
     }
-    .day-name {
-      font-size: 11px;
-      color: #6e8caa;
-      font-weight: 500;
-      text-transform: capitalize;
-    }
-    .day-emoji { font-size: 22px; margin: 5px 0; }
-    .day-temps {
-      font-size: 13px;
-      font-weight: 500;
-    }
+    .day-name { font-size: 2.8vw; color: #6e8caa; font-weight: 500; text-transform: capitalize; }
+    .day-emoji { font-size: 6vw; }
+    .day-temps { font-size: 3.2vw; font-weight: 500; }
     .day-min { color: #6e8caa; }
-    .day-precip {
-      font-size: 10px;
-      color: #7bafd4;
-      margin-top: 4px;
-    }
-    .day-wind {
-      font-size: 10px;
-      color: #6e8caa;
-      margin-top: 2px;
-    }
-    .error {
-      color: #f28b82;
-      text-align: center;
-      padding: 30px 20px;
-      font-size: 14px;
-    }
+    .day-extra { font-size: 2.4vw; color: #6e8caa; }
+
+    .error { color: #f28b82; text-align: center; padding: 5vw; font-size: 3.5vw; }
   </style>
 </head>
 <body>
@@ -124,13 +85,11 @@
           <div class="source">${d.source}</div>
         </div>
         <div class="current">
-          <div class="current-left">
-            <div class="current-emoji">${c.emoji}</div>
-          </div>
+          <div class="current-emoji">${c.emoji}</div>
           <div class="current-right">
             <div class="current-temp">${c.temp}°</div>
-            <div class="current-feels">ощущается ${c.feelsLike}°</div>
-            <div class="current-wind">💨 ${c.windSpeed} м/с, ${c.windDir}</div>
+            <div class="current-sub">ощущается ${c.feelsLike}°</div>
+            <div class="current-sub">💨 ${c.windSpeed} м/с, ${c.windDir}</div>
           </div>
         </div>
         <div class="divider"></div>
@@ -140,8 +99,7 @@
               <div class="day-name">${day.day}</div>
               <div class="day-emoji">${day.emoji}</div>
               <div class="day-temps">${day.max}° <span class="day-min">${day.min}°</span></div>
-              <div class="day-precip">${day.precipProb}% · ${day.precip} мм</div>
-              <div class="day-wind">${day.windSpeed} м/с ${day.windDir}</div>
+              <div class="day-extra">${day.precipProb}% · ${day.windSpeed}м/с</div>
             </div>
           `).join('')}
         </div>
