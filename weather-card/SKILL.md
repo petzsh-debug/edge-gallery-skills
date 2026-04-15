@@ -5,22 +5,21 @@ description: Show current weather and 3-day forecast as a visual card. Use when 
 
 # Weather Card
 
-Shows current weather and a 3-day forecast as a visual card in chat.
+## When to use
 
-## Examples
-
-- "погода"
-- "какая погода?"
-- "будет дождь?"
-- "прогноз на три дня"
-- "погода в Москве"
+Use this skill when user asks: "погода", "какая погода", "будет дождь", "прогноз", "температура", or any weather question.
 
 ## Instructions
 
-Call `run_js` with:
+After loading this skill, call run_js immediately with these exact parameters:
+- skillName: `weather-card`
 - scriptName: `index.html`
-- data: a JSON string with field `location` — the city name from the user's message. Use `"Екатеринбург"` if no city was specified.
+- data: `{"location":"Екатеринбург"}` — or replace with the city the user asked about
 
-Example data: `{"location":"Екатеринбург"}`
+**Important:** Do not write any text before calling run_js. Call run_js right away.
 
-Present the result as-is — a weather card will appear in chat.
+## Examples
+
+User says "погода" → call run_js, skillName=weather-card, scriptName=index.html, data={"location":"Екатеринбург"}
+
+User says "погода в Москве" → call run_js, skillName=weather-card, scriptName=index.html, data={"location":"Москва"}

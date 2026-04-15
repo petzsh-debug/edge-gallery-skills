@@ -6,50 +6,40 @@
   <title>Weather</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { width: 100%; height: 100%; }
+    html {
+      background: linear-gradient(160deg, #1b2f4e 0%, #0d1b2e 100%);
+      min-height: 100%;
+    }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: linear-gradient(160deg, #1b2f4e 0%, #0d1b2e 100%);
       color: #e8eaed;
       padding: 2.5vw;
-      display: flex;
-      align-items: stretch;
     }
     .card {
-      width: 100%;
       background: rgba(255,255,255,0.07);
       border: 1px solid rgba(255,255,255,0.1);
       border-radius: 3vw;
       padding: 2.5vw 3vw;
-      display: flex;
-      flex-direction: column;
-      gap: 1.5vw;
     }
-
-    /* Header */
     .header {
       display: flex;
       justify-content: space-between;
       align-items: baseline;
+      margin-bottom: 2vw;
     }
     .location { font-size: 3.8vw; font-weight: 600; }
     .source { font-size: 2.6vw; color: #6e8caa; }
-
-    /* Current conditions */
     .current {
       display: flex;
       align-items: center;
       gap: 3vw;
+      margin-bottom: 2vw;
     }
     .current-emoji { font-size: 11vw; line-height: 1; }
-    .current-right { display: flex; flex-direction: column; gap: 0.5vw; }
+    .current-right { display: flex; flex-direction: column; gap: 0.8vw; }
     .current-temp { font-size: 12vw; font-weight: 200; line-height: 1; letter-spacing: -0.5vw; }
     .current-sub { font-size: 3vw; color: #8ab4c8; }
-
-    /* Divider */
-    .divider { height: 1px; background: rgba(255,255,255,0.08); }
-
-    /* Forecast */
+    .divider { height: 1px; background: rgba(255,255,255,0.08); margin-bottom: 2vw; }
     .forecast { display: flex; gap: 1.5vw; }
     .day {
       flex: 1;
@@ -57,16 +47,12 @@
       border-radius: 2vw;
       padding: 1.5vw 1vw;
       text-align: center;
-      display: flex;
-      flex-direction: column;
-      gap: 0.8vw;
     }
     .day-name { font-size: 2.8vw; color: #6e8caa; font-weight: 500; text-transform: capitalize; }
-    .day-emoji { font-size: 6vw; }
+    .day-emoji { font-size: 6vw; margin: 1vw 0; }
     .day-temps { font-size: 3.2vw; font-weight: 500; }
     .day-min { color: #6e8caa; }
-    .day-extra { font-size: 2.4vw; color: #6e8caa; }
-
+    .day-extra { font-size: 2.4vw; color: #6e8caa; margin-top: 0.8vw; }
     .error { color: #f28b82; text-align: center; padding: 5vw; font-size: 3.5vw; }
   </style>
 </head>
