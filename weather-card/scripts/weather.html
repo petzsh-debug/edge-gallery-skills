@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Weather</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(160deg, #1b2f4e 0%, #0d1b2e 100%);
+      color: #e8eaed;
+      min-height: 100vh;
+      padding: 14px;
+    }
+    .card {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 18px;
+      padding: 18px;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 14px;
+    }
+    .location {
+      font-size: 16px;
+      font-weight: 600;
+    }
+    .source {
+      font-size: 11px;
+      color: #6e8caa;
+    }
+    .current {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+    .current-left {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 64px;
+    }
+    .current-emoji { font-size: 44px; line-height: 1; }
+    .current-right { flex: 1; }
+    .current-temp {
+      font-size: 48px;
+      font-weight: 200;
+      line-height: 1;
+      letter-spacing: -2px;
+    }
+    .current-feels {
+      font-size: 13px;
+      color: #8ab4c8;
+      margin-top: 3px;
+    }
+    .current-wind {
+      font-size: 13px;
+      color: #8ab4c8;
+      margin-top: 3px;
+    }
+    .divider {
+      height: 1px;
+      background: rgba(255,255,255,0.08);
+      margin: 14px 0;
+    }
+    .forecast {
+      display: flex;
+      gap: 8px;
+    }
+    .day {
+      flex: 1;
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px;
+      padding: 10px 6px;
+      text-align: center;
+    }
+    .day-name {
+      font-size: 11px;
+      color: #6e8caa;
+      font-weight: 500;
+      text-transform: capitalize;
+    }
+    .day-emoji { font-size: 22px; margin: 5px 0; }
+    .day-temps {
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .day-min { color: #6e8caa; }
+    .day-precip {
+      font-size: 10px;
+      color: #7bafd4;
+      margin-top: 4px;
+    }
+    .day-wind {
+      font-size: 10px;
+      color: #6e8caa;
+      margin-top: 2px;
+    }
+    .error {
+      color: #f28b82;
+      text-align: center;
+      padding: 30px 20px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+<script>
+  try {
+    const hash = decodeURIComponent(location.hash.slice(1));
+    const d = JSON.parse(hash);
+    const c = d.current;
+    const f = d.forecast || [];
+
+    document.body.innerHTML = `
+      <div class="card">
+        <div class="header">
+          <div class="location">📍 ${d.location}</div>
+          <div class="source">${d.source}</div>
+        </div>
+        <div class="current">
+          <div class="current-left">
+            <div class="current-emoji">${c.emoji}</div>
+          </div>
+          <div class="current-right">
+            <div class="current-temp">${c.temp}°</div>
+            <div class="current-feels">ощущается ${c.feelsLike}°</div>
+            <div class="current-wind">💨 ${c.windSpeed} м/с, ${c.windDir}</div>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="forecast">
+          ${f.map(day => `
+            <div class="day">
+              <div class="day-name">${day.day}</div>
+              <div class="day-emoji">${day.emoji}</div>
+              <div class="day-temps">${day.max}° <span class="day-min">${day.min}°</span></div>
+              <div class="day-precip">${day.precipProb}% · ${day.precip} мм</div>
+              <div class="day-wind">${day.windSpeed} м/с ${day.windDir}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  } catch(e) {
+    document.body.innerHTML = `<div class="error">Ошибка: ${e.message}</div>`;
+  }
+</script>
+</body>
+</html>
