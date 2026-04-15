@@ -153,7 +153,7 @@ window['ai_edge_gallery_get_result'] = async function(data) {
     }
 
     const encoded = encodeURIComponent(JSON.stringify(weatherData));
-    const url = 'https://petzsh-debug.github.io/edge-gallery-skills/weather-card/scripts/weather.html?v=' + Date.now() + '#' + encoded;
+    const url = 'weather.html?v=' + Date.now() + '#' + encoded;
     return JSON.stringify({ webview: { url, aspectRatio: 1.6 } });
   } catch(e) {
     return JSON.stringify({ error: 'Ошибка погоды: ' + e.message });
