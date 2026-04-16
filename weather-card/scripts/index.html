@@ -161,7 +161,7 @@ window['ai_edge_gallery_get_result'] = async function(data) {
 
     var encoded = encodeURIComponent(JSON.stringify(weatherData));
     var url = WEBVIEW_BASE + '?v=' + Date.now() + '#' + encoded;
-    return JSON.stringify({ webview: { url: url, aspectRatio: 1.6 } });
+    return JSON.stringify({ result: 'Погода в ' + weatherData.location, webview: { url: url } });
   } catch(e) {
     return JSON.stringify({ error: 'Ошибка погоды: ' + e.message });
   }
