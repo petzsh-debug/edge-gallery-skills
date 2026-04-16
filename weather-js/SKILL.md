@@ -1,5 +1,5 @@
 ---
-name: weather
+name: weather-js
 description: Get current weather and 3-day forecast as text. Use when user asks about weather, temperature, rain, snow, wind, or forecast.
 ---
 
@@ -12,7 +12,7 @@ Use this skill when user asks: "погода", "какая погода", "бу�
 ## Instructions
 
 Call run_js immediately with these exact parameters:
-- skillName: `weather`
+- skillName: `weather-js`
 - scriptName: `index.html`
 - data: `{"location":"Екатеринбург"}` — replace with the city the user asked about
 
@@ -22,8 +22,8 @@ After run_js returns, output the result text exactly as received. Do not change 
 
 ## Examples
 
-User says "погода" → call run_js, skillName=weather, scriptName=index.html, data={"location":"Екатеринбург"}
+User says "погода" → call run_js, skillName=weather-js, scriptName=index.html, data={"location":"Екатеринбург"}
 
-User says "погода в Москве" → call run_js, skillName=weather, scriptName=index.html, data={"location":"Москва"}
+User says "погода в Москве" → call run_js, skillName=weather-js, scriptName=index.html, data={"location":"Москва"}
 
-User says "погода в Сочи" → call run_js, skillName=weather, scriptName=index.html, data={"location":"Сочи"}
+User says "погода в Сочи" → call run_js, skillName=weather-js, scriptName=index.html, data={"location":"Сочи"}
