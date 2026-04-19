@@ -115,9 +115,10 @@ function nominatimFetch(url,hdrs){
 async function geocode(address){
   const hdrs={'Accept-Language':'ru,en','User-Agent':'EdgeGallerySkill/1.0'};
   let lastErr='';
+
+  // Photon — address as-is, no hardcoded city bias
   try{
-    const q=encodeURIComponent(address+', Екатеринбург');
-    const resp=await fetch('https://photon.komoot.io/api/?q='+q+'&limit=5&lat=56.838&lon=60.597&lang=ru',{headers:hdrs});
+    const resp=await fetch('https://photon.komoot.io/api/?q='+encodeURIComponent(address)+'&limit=5&lang=ru',{headers:hdrs});
     if(!resp.ok) throw new Error('Photon HTTP '+resp.status);
     const data=await resp.json();
     if(data&&data.features&&data.features.length){
@@ -126,14 +127,17 @@ async function geocode(address){
       if(pick) return{lat:pick[1],lon:pick[0]};
     }
   }catch(e){lastErr='Photon: '+e.message;}
-  const base='https://nominatim.openstreetmap.org/search?format=json&limit=10&countrycodes=ru';
-  for(const q of[address+', Екатеринбург',address+', Свердловская область',address]){
+
+  // Nominatim fallback: address as-is, then without house number
+  const noHouse=address.replace(/,\s*\d+[а-яА-Яa-zA-Z]?(\s*,|\s*$)/,(_,s)=>s||'').trim();
+  const base='https://nominatim.openstreetmap.org/search?format=json&limit=5&countrycodes=ru';
+  const queries=[address];
+  if(noHouse!==address) queries.push(noHouse);
+  for(const q of queries){
     try{
       const results=await nominatimFetch(base+'&q='+encodeURIComponent(q),hdrs);
       if(!results||!results.length) continue;
-      const ekb=results.find(r=>r.display_name&&(r.display_name.includes('Екатеринбург')||r.display_name.includes('Ekaterinburg')));
-      const pick=ekb||results[0];
-      const lat=parseFloat(pick.lat),lon=parseFloat(pick.lon);
+      const lat=parseFloat(results[0].lat),lon=parseFloat(results[0].lon);
       if(!isNaN(lat)&&!isNaN(lon)) return{lat,lon};
     }catch(e){lastErr='Nominatim: '+e.message;}
   }
