@@ -99,29 +99,45 @@ function makeIcon(i,done){
 }
 
 // ── Geocoding ─────────────────────────────────────────────────────────────────
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+// Nominatim требует не более 1 запроса в секунду — сериализуем все запросы
+let _nomQueue=Promise.resolve();
+function nominatimFetch(url,hdrs){
+  _nomQueue=_nomQueue.then(()=>sleep(1100));
+  return _nomQueue.then(async()=>{
+    const resp=await fetch(url,{headers:hdrs});
+    if(!resp.ok) throw new Error('HTTP '+resp.status);
+    return resp.json();
+  });
+}
+
 async function geocode(address){
   const hdrs={'Accept-Language':'ru,en','User-Agent':'EdgeGallerySkill/1.0'};
+  let lastErr='';
   try{
     const q=encodeURIComponent(address+', Екатеринбург');
-    const data=await(await fetch('https://photon.komoot.io/api/?q='+q+'&limit=5&lat=56.838&lon=60.597&lang=ru',{headers:hdrs})).json();
+    const resp=await fetch('https://photon.komoot.io/api/?q='+q+'&limit=5&lat=56.838&lon=60.597&lang=ru',{headers:hdrs});
+    if(!resp.ok) throw new Error('Photon HTTP '+resp.status);
+    const data=await resp.json();
     if(data&&data.features&&data.features.length){
       const withHouse=data.features.find(f=>f.properties&&f.properties.housenumber);
       const pick=(withHouse||data.features[0]).geometry.coordinates;
       if(pick) return{lat:pick[1],lon:pick[0]};
     }
-  }catch(e){}
+  }catch(e){lastErr='Photon: '+e.message;}
   const base='https://nominatim.openstreetmap.org/search?format=json&limit=10&countrycodes=ru';
   for(const q of[address+', Екатеринбург',address+', Свердловская область',address]){
     try{
-      const results=await(await fetch(base+'&q='+encodeURIComponent(q),{headers:hdrs})).json();
+      const results=await nominatimFetch(base+'&q='+encodeURIComponent(q),hdrs);
       if(!results||!results.length) continue;
       const ekb=results.find(r=>r.display_name&&(r.display_name.includes('Екатеринбург')||r.display_name.includes('Ekaterinburg')));
       const pick=ekb||results[0];
       const lat=parseFloat(pick.lat),lon=parseFloat(pick.lon);
       if(!isNaN(lat)&&!isNaN(lon)) return{lat,lon};
-    }catch(e){}
+    }catch(e){lastErr='Nominatim: '+e.message;}
   }
-  return null;
+  return{error:lastErr||'не найден в базе'};
 }
 
 // ── GPX generation ────────────────────────────────────────────────────────────
@@ -226,12 +242,16 @@ window.addEventListener('load',()=>{
   });
 
   locations.forEach(async(loc,i)=>{
-    const coords=await geocode(loc.address);
+    const result=await geocode(loc.address);
     const statusEl=document.getElementById('s'+i);
     const badgeEl=document.getElementById('b'+i);
 
-    if(!coords){statusEl.textContent='⚠ Не найден';return;}
-
+    if(!result||result.error){
+      statusEl.textContent='⚠ Не найден'+(result?.error?' — '+result.error:'');
+      console.error('[multi-pin-map] geocode failed for "'+loc.address+'":', result?.error);
+      return;
+    }
+    const coords=result;
     statusEl.textContent=coords.lat.toFixed(4)+', '+coords.lon.toFixed(4);
     badgeEl.style.background=COLORS[i%COLORS.length];
     foundPins[i].lat=coords.lat;
