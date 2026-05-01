@@ -45,17 +45,6 @@
     /* Toast */
     #toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#323232;color:white;padding:10px 20px;border-radius:24px;font-size:14px;z-index:3000;opacity:0;transition:opacity .2s;pointer-events:none}
     #toast.show{opacity:1}
-
-    /* Location button */
-    .loc-btn{width:40px;height:40px;background:white;border:2px solid rgba(0,0,0,.2);border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 5px rgba(0,0,0,.35);padding:0;transition:background .15s}
-    .loc-btn:hover{background:#f4f4f4}
-    .loc-btn.loc-follow{background:#1a73e8}
-
-    /* Location dot on map */
-    .loc-dot{position:relative;width:20px;height:20px}
-    .loc-dot::before{content:'';position:absolute;inset:0;background:rgba(26,115,232,.25);border-radius:50%;animation:locpulse 2s ease-out infinite}
-    .loc-dot-inner{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:12px;height:12px;background:#1a73e8;border-radius:50%;border:2.5px solid white;box-shadow:0 1px 4px rgba(0,0,0,.4)}
-    @keyframes locpulse{0%{transform:scale(1);opacity:.8}100%{transform:scale(2.5);opacity:0}}
   </style>
 </head>
 <body>
@@ -241,57 +230,6 @@ window.addEventListener('load',()=>{
   map.setView([56.838,60.597],12);
   setTimeout(()=>map.invalidateSize(),200);
   window.addEventListener('resize',()=>map.invalidateSize());
-
-  // ── Location button ──────────────────────────────────────────────────────────
-  if(navigator.geolocation){
-    const SVG_OFF=`<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="1" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="23" y2="12"/></svg>`;
-    const SVG_ON=`<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path d="M12 2L22 22L12 17L2 22Z" fill="white"/></svg>`;
-
-    let locActive=false,locMarker=null,locWatch=null,locBtn=null;
-
-    function locDotIcon(){
-      return L.divIcon({html:'<div class="loc-dot"><div class="loc-dot-inner"></div></div>',className:'',iconSize:[20,20],iconAnchor:[10,10]});
-    }
-    function onLocPos(pos){
-      const lat=pos.coords.latitude,lon=pos.coords.longitude;
-      if(!locMarker) locMarker=L.marker([lat,lon],{icon:locDotIcon(),zIndexOffset:1000}).addTo(map);
-      else locMarker.setLatLng([lat,lon]);
-      map.setView([lat,lon],Math.max(map.getZoom(),15),{animate:true});
-    }
-    function onLocErr(){
-      showToast('Нет доступа к местоположению');
-      locActive=false;
-      locBtn.innerHTML=SVG_OFF;
-      locBtn.className='loc-btn';
-    }
-    function toggleLocation(){
-      locActive=!locActive;
-      if(locActive){
-        locBtn.innerHTML=SVG_ON;
-        locBtn.className='loc-btn loc-follow';
-        locWatch=navigator.geolocation.watchPosition(onLocPos,onLocErr,{enableHighAccuracy:true,maximumAge:5000});
-      }else{
-        locBtn.innerHTML=SVG_OFF;
-        locBtn.className='loc-btn';
-        if(locWatch!==null){navigator.geolocation.clearWatch(locWatch);locWatch=null;}
-        if(locMarker){map.removeLayer(locMarker);locMarker=null;}
-      }
-    }
-
-    const LocControl=L.Control.extend({
-      options:{position:'bottomright'},
-      onAdd(){
-        const btn=L.DomUtil.create('button','loc-btn');
-        btn.innerHTML=SVG[0];
-        btn.title=TITLES[0];
-        L.DomEvent.disableClickPropagation(btn);
-        L.DomEvent.on(btn,'click',toggleLocation);
-        locBtn=btn;
-        return btn;
-      }
-    });
-    new LocControl().addTo(map);
-  }
 
   const listEl=document.getElementById('list');
   const bounds=[];
